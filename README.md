@@ -1,7 +1,7 @@
-Example
+Augmentation
 ==============================
 
-s
+A short description of the project.
 
 Project Organization
 ------------
