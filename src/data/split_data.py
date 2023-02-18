@@ -35,7 +35,7 @@ def main(processed_path: str, interim_path: str, external_path: str, data: str) 
 
     with wandb.init(
         entity=os.getenv("WANDB_ENTITY"),
-        project="Perceptron-finger",
+        project=os.getenv("WANDB_PROJECT"),
         job_type="split_data",
         tags=[f"{data}"],
     ) as run:
@@ -59,7 +59,7 @@ def main(processed_path: str, interim_path: str, external_path: str, data: str) 
 
         # Create a new artifact for the syntetic data, including the function that created it, to Artifacts
         ds_art = wandb.Artifact(
-            name=f"splited_{data}",
+            name=f"split_{data}",
             type="dataset",
             description="Split dataset into random train and test subsets ",
             metadata={

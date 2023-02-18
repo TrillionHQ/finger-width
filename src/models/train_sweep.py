@@ -36,16 +36,15 @@ sweep_configuration = {
         # "img_size": {"value": 40},
         "batch_size": {"value": 64},
         "epochs": {"value": 1000},
-        "lr": {"value": 0.001},
+        "lr": {"value": 1e-4},
         "val_split": {"value": 0.15},
         "earlystop": {"value": 20},
         "reduce_lr": {"value": 5},
         "arch": {"value": "Perceptron"},
         "size_layer1": {"values": [64, 128, 256, 512]},
         "size_layer2": {"values": [16, 32, 64, 128, 256]},
-        # "size_layer3": {"values": [8, 16]},
-        # "data": {"value": "real"},
         "seed": {"value": 42},
+        "pred_del": {"value": 10},
     },
 }
 
@@ -88,7 +87,6 @@ def main(
         tags=[f"{data}"],
     ) as run:  # config is optional here
         # get sweep parameters
-        # img_size = wandb.config.img_size
         batch_size = wandb.config.batch_size
         epochs = wandb.config.epochs
         lr = wandb.config.lr
@@ -98,15 +96,15 @@ def main(
         arch = wandb.config.arch
         size_layer1 = wandb.config.size_layer1
         size_layer2 = wandb.config.size_layer2
-        # size_layer3 = wandb.config.size_layer3
         seed = wandb.config.seed
+        pred_del = wandb.config.pred_del
 
         # download dataset from artifact
-        artifact = run.use_artifact(f"splited_{data}:latest", type="dataset")
+        artifact = run.use_artifact(f"split_{data}:latest", type="dataset")
         artifact_dir = artifact.download(processed_path)
         X_train = np.load(os.path.join(processed_path, f"X_{data}_train.npy"))
         y_train = np.load(os.path.join(processed_path, f"y_{data}_train.npy"))
-        y_train = y_train * 1000
+        y_train = y_train * pred_del
 
         model_path = os.path.join(models_path, f"{data}.h5")
         csv_path = os.path.join(models_path, f"{data}_logger.csv")
@@ -197,6 +195,8 @@ def main(
             js = sorted(glob(os.path.join(test_path, "*.json")))
 
             k = 1
+            points = {"left": [], "right": []}
+            pred_data = []
             for i, j in tqdm(zip(images, js), total=len(images)):
                 # read image
                 name = i.split("/")[-1]
@@ -211,7 +211,10 @@ def main(
                 """Predict"""
                 model = tf.keras.models.load_model(model_path)
                 y_pred = model.predict(X_test)
-                y_pred = y_pred / 1000
+                y_pred = y_pred / pred_del
+                points["left"].append(y_pred[0, 0]), points["right"].append(
+                    y_pred[0, 1]
+                )
                 x, y = config.IMAGE_SIZE[1], config.IMAGE_SIZE[0]
                 start_point_1, end_point_1 = (round(x * y_pred[0, 0]), 0), (
                     round(x * y_pred[0, 0]),
@@ -235,21 +238,39 @@ def main(
 
                 cv2.imwrite(os.path.join(inference_path, name), resized)
 
+                pred_data.append(
+                    [
+                        k,
+                        wandb.Image(os.path.join(inference_path, name), resized),
+                        name,
+                        y_pred[0, 0],
+                        y_pred[0, 1],
+                    ]
+                )
+
                 k += 1
 
-        # Or multiple images
-        wandb.log(
-            {
-                "example": [
-                    wandb.Image(img)
-                    for img in glob(os.path.join(inference_path, "*.png"))
-                ]
-            }
-        )
+        # # Or multiple images
+        # inference_images = glob(os.path.join(inference_path, "*.png"))
+        # wandb.log(
+        #     {
+        #         "example": [
+        #             wandb.Image(img)
+        #             for img in inference_images
+        #         ]
+        #     }
+        # )
+
+        # create a wandb.Table() with corresponding columns
+        columns = ["id", "image", "name", "left", "right"]
+        table = wandb.Table(data=pred_data, columns=columns)
+
+        wandb.log({"Table": table})
+
         wandb.log(
             {"num_images": X_train.shape[0] * (1 - val_split), "model_size": model_size}
         )
-        # wandb.finish()
+
         wandb.finish()
 
 

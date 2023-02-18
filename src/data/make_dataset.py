@@ -43,7 +43,7 @@ def main(
 
     with wandb.init(
         entity=os.getenv("WANDB_ENTITY"),
-        project="Perceptron-finger",
+        project=os.getenv("WANDB_PROJECT"),
         job_type="preprocessed-data",
         tags=[f"{data}"],
     ) as run:
@@ -55,16 +55,15 @@ def main(
 
         i = 0
         for k, j in tqdm(zip(images, js), total=len(images)):
-            if 'float' in data:
+            if "float" in data:
                 img = cv2.imread(k).astype(np.float32)
             else:
                 img = cv2.imread(k)
             # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            print(img.shape)
 
             # resize image
             resized = cv2.resize(img, (width, height), interpolation=cv2.INTER_AREA)
-            print(resized.shape)
+
             with open(j, "r") as f:
                 points = json.load(f)
 
@@ -95,7 +94,7 @@ def main(
 
         wandb.finish
 
-        print(f"Real dataset created")
+        print(f"Real dataset created ({i} photos)")
 
 
 if __name__ == "__main__":
