@@ -44,7 +44,7 @@ sweep_configuration = {
         "size_layer1": {"values": [64, 128, 256, 512]},
         "size_layer2": {"values": [16, 32, 64, 128, 256]},
         "seed": {"value": 42},
-        "pred_del": {"value": 10},
+        "pred_del": {"value": 100},
     },
 }
 
