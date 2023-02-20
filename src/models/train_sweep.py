@@ -49,7 +49,7 @@ sweep_configuration = {
 }
 
 
-sweep_id = wandb.sweep(sweep=sweep_configuration, project="Perceptron-finger")
+sweep_id = wandb.sweep(sweep=sweep_configuration, project="Finger_width")
 
 
 @click.command()
@@ -82,7 +82,7 @@ def main(
 
     with wandb.init(
         entity=os.getenv("WANDB_ENTITY"),
-        project="Perceptron-finger",
+        project="Finger_width",
         job_type="sweep",
         tags=[f"{data}"],
     ) as run:  # config is optional here
