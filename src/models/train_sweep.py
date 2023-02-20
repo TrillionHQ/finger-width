@@ -250,17 +250,6 @@ def main(
 
                 k += 1
 
-        # # Or multiple images
-        # inference_images = glob(os.path.join(inference_path, "*.png"))
-        # wandb.log(
-        #     {
-        #         "example": [
-        #             wandb.Image(img)
-        #             for img in inference_images
-        #         ]
-        #     }
-        # )
-
         # create a wandb.Table() with corresponding columns
         columns = ["id", "image", "name", "left", "right"]
         table = wandb.Table(data=pred_data, columns=columns)
