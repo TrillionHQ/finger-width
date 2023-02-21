@@ -18,7 +18,9 @@ from sklearn.model_selection import train_test_split
 @click.argument("interim_path", default=config.INTERIM_PATH, type=click.Path())
 @click.argument("external_path", default=config.EXTERNAL_PATH, type=click.Path())
 @click.option("--data", default=config.DATA_NAME, help="type of data")
-def main(processed_path: str, interim_path: str, external_path: str, data: str) -> None:
+@click.option("--entity", default=os.getenv("WANDB_ENTITY"), help="entity")
+@click.option("--project", default=os.getenv("WANDB_PROJECT"), help="project")
+def main(processed_path: str, interim_path: str, external_path: str, data: str, entity: str, project: str) -> None:
     """
     Split dataset
     :param processed_path:
@@ -34,8 +36,8 @@ def main(processed_path: str, interim_path: str, external_path: str, data: str) 
     wandb.login(key=os.getenv("WANDB_API_KEY"))
 
     with wandb.init(
-        entity=os.getenv("WANDB_ENTITY"),
-        project=os.getenv("WANDB_PROJECT"),
+        entity=entity,
+        project=project,
         job_type="split_data",
         tags=[f"{data}"],
     ) as run:

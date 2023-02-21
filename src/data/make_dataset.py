@@ -13,17 +13,20 @@ from tqdm import tqdm
 from dotenv import load_dotenv
 
 
+load_dotenv()
 @click.command()
 @click.argument("raw_path", default=config.RAW_PATH, type=click.Path(exists=True))
 @click.argument(
     "interim_path", default=config.INTERIM_PATH, type=click.Path(exists=True)
 )
-@click.option("--data", default=config.DATA_NAME, help="type of data")
 @click.option("--height", default=config.IMAGE_SIZE[0], help="height")
 @click.option("--width", default=config.IMAGE_SIZE[1], help="width")
 @click.option("--channels", default=config.IMAGE_SIZE[2], help="number of channels")
+@click.option("--data", default=config.DATA_NAME, help="type of data")
+@click.option("--entity", default=os.getenv("WANDB_ENTITY"), help="entity")
+@click.option("--project", default=os.getenv("WANDB_PROJECT"), help="project")
 def main(
-    raw_path: str, interim_path: str, data: str, height: str, width: str, channels: str
+    raw_path: str, interim_path: str, height: str, width: str, channels: str, data: str, entity: str, project: str
 ) -> None:
     """
     Runs real data preprocessing scripts and saved it to ../interim_path).
@@ -38,12 +41,11 @@ def main(
     logger = logging.getLogger(__name__)
     logger.info("Real data generation")
 
-    load_dotenv()
     wandb.login(key=os.getenv("WANDB_API_KEY"))
 
     with wandb.init(
-        entity=os.getenv("WANDB_ENTITY"),
-        project=os.getenv("WANDB_PROJECT"),
+        entity=entity,
+        project=project,
         job_type="preprocessed-data",
         tags=[f"{data}"],
     ) as run:
@@ -55,8 +57,8 @@ def main(
 
         i = 0
         for k, j in tqdm(zip(images, js), total=len(images)):
-            if "float" in data:
-                img = cv2.imread(k).astype(np.float32)
+            if "fl" in data:
+                img = cv2.imread(k).astype(np.float32)/255.0
             else:
                 img = cv2.imread(k)
             # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -73,7 +75,7 @@ def main(
 
         # write placeholder arrays into a binary npz file
         np.savez(
-            os.path.join(interim_path, f"{config.DATA_NAME}_crop_finger.npz"), x=x, y=y
+            os.path.join(interim_path, f"{data}_crop_finger.npz"), x=x, y=y
         )
 
         # Create a new artifact for the syntetic data, including the function that created it, to Artifacts
@@ -86,7 +88,7 @@ def main(
 
         # Attach our processed data to the Artifact
         ds_art.add_file(
-            os.path.join(interim_path, f"{config.DATA_NAME}_crop_finger.npz")
+            os.path.join(interim_path, f"{data}_crop_finger.npz")
         )
 
         # Log the Artifact
