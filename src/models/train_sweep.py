@@ -49,9 +49,6 @@ sweep_configuration = {
 }
 
 
-sweep_id = wandb.sweep(sweep=sweep_configuration, project="Finger_width")
-
-
 @click.command()
 @click.argument(
     "processed_path", default=config.PROCESSED_PATH, type=click.Path(exists=True)
@@ -60,12 +57,16 @@ sweep_id = wandb.sweep(sweep=sweep_configuration, project="Finger_width")
 @click.argument("test_path", default=config.TEST_PATH, type=click.Path())
 @click.argument("inference_path", default=config.INFERENCE_PATH, type=click.Path())
 @click.option("--data", default=config.DATA_NAME, help="type of data")
+@click.option("--entity", default=os.getenv("WANDB_ENTITY"), help="entity")
+@click.option("--project", default=os.getenv("WANDB_PROJECT"), help="project")
 def main(
     processed_path: str,
     models_path: str,
     test_path: str,
     inference_path: str,
     data: str,
+    entity: str,
+    project: str,
 ) -> None:
     """
     Hyperparameter search and model optimization
@@ -77,12 +78,10 @@ def main(
     logger = logging.getLogger(__name__)
     logger.info("Hyperparameter search and model optimization")
 
-    load_dotenv()
     wandb.login(key=os.getenv("WANDB_API_KEY"))
-
     with wandb.init(
-        entity=os.getenv("WANDB_ENTITY"),
-        project="Finger_width",
+        entity=entity,
+        project=project,
         job_type="sweep",
         tags=[f"{data}"],
     ) as run:  # config is optional here
@@ -209,6 +208,7 @@ def main(
                 X_test = resized[np.newaxis, :, :, :]
 
                 """Predict"""
+                print("starting predict")
                 model = tf.keras.models.load_model(model_path)
                 y_pred = model.predict(X_test)
                 y_pred = y_pred / pred_del
@@ -224,7 +224,8 @@ def main(
                     round(x * y_pred[0, 1]),
                     y,
                 )
-
+                # print(start_point_1, end_point_1)
+                # print(y_pred)
                 # Green color in BGR
                 color = (0, 255, 0)
 
@@ -259,7 +260,6 @@ def main(
         wandb.log(
             {"num_images": X_train.shape[0] * (1 - val_split), "model_size": model_size}
         )
-
         wandb.finish()
 
 
@@ -268,4 +268,10 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format=log_fmt)
 
     # Start sweep job.
+    load_dotenv()
+    sweep_id = wandb.sweep(
+        sweep=sweep_configuration,
+        entity=os.getenv("WANDB_ENTITY"),
+        project=os.getenv("WANDB_PROJECT"),
+    )
     wandb.agent(sweep_id, function=main, count=40)
