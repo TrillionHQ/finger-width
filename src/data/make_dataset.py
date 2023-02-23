@@ -1,106 +1,54 @@
-# -*- coding: utf-8 -*-
-import os
-import cv2
-import json
-import click
-import wandb
 import config
-import logging
-import numpy as np
-
+import shutil
+import os
 from glob import glob
-from tqdm import tqdm
-from dotenv import load_dotenv
+from sklearn.model_selection import train_test_split
 
 
-load_dotenv()
-@click.command()
-@click.argument("raw_path", default=config.RAW_PATH, type=click.Path(exists=True))
-@click.argument(
-    "interim_path", default=config.INTERIM_PATH, type=click.Path(exists=True)
-)
-@click.option("--height", default=config.IMAGE_SIZE[0], help="height")
-@click.option("--width", default=config.IMAGE_SIZE[1], help="width")
-@click.option("--channels", default=config.IMAGE_SIZE[2], help="number of channels")
-@click.option("--data", default=config.DATA_NAME, help="type of data")
-@click.option("--entity", default=os.getenv("WANDB_ENTITY"), help="entity")
-@click.option("--project", default=os.getenv("WANDB_PROJECT"), help="project")
-def main(
-    raw_path: str, interim_path: str, height: str, width: str, channels: str, data: str, entity: str, project: str
-) -> None:
-    """
-    Runs real data preprocessing scripts and saved it to ../interim_path).
-    :param raw_path:
-    :param interim_path:
-    :param data:
-    :param height:
-    :param width:
-    :param channels:
-    :return:
-    """
-    logger = logging.getLogger(__name__)
-    logger.info("Real data generation")
 
-    wandb.login(key=os.getenv("WANDB_API_KEY"))
+def create_dir(path):
+    """ Creating a directory """
+    if not os.path.exists(path):
+        os.makedirs(path)
+    return path
 
-    with wandb.init(
-        entity=entity,
-        project=project,
-        job_type="preprocessed-data",
-        tags=[f"{data}"],
-    ) as run:
-        images = sorted(glob(os.path.join(raw_path, "*.png")))
-        js = sorted(glob(os.path.join(raw_path, "*.json")))
 
-        x = np.ndarray(shape=(len(images), height, width, channels), dtype=np.float32)
-        y = np.ndarray(shape=(len(images), 2), dtype=np.float32)
+def load_data(path, split=0.1):
+    """Loading the images and masks"""
+    X = sorted(glob(os.path.join(path, "*.png")))
+    Y = sorted(glob(os.path.join(path, "*.json")))
 
-        i = 0
-        for k, j in tqdm(zip(images, js), total=len(images)):
-            if "fl" in data:
-                img = cv2.imread(k).astype(np.float32)/255.0
+    """ Spliting the data into training and testing """
+    split_size = int(len(X) * split)
+
+    train_x, test_x = train_test_split(X, test_size=split_size, random_state=42)
+    train_y, test_y = train_test_split(Y, test_size=split_size, random_state=42)
+
+    train_x, val_x = train_test_split(train_x, test_size=split_size, random_state=42)
+    train_y, val_y = train_test_split(train_y, test_size=split_size, random_state=42)
+
+    return (train_x, train_y), (test_x, test_y), (val_x, val_y)
+
+
+def save_data(path, splited_data):
+    folders = ["train", "test", "valid"]
+    for i, d in enumerate(folders):
+        dst_dir = create_dir(os.path.join(path, d))
+
+        for im, js in zip(splited_data[i][0], splited_data[i][1]):
+            dst_im = os.path.join(dst_dir, im.split("/")[-1])
+            dst_js = os.path.join(dst_dir, js.split("/")[-1])
+            if os.path.isfile(dst_im):
+                pass
             else:
-                img = cv2.imread(k)
-            # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-
-            # resize image
-            resized = cv2.resize(img, (width, height), interpolation=cv2.INTER_AREA)
-
-            with open(j, "r") as f:
-                points = json.load(f)
-
-            x[i] = resized
-            y[i] = np.array([points["left"], points["right"]])
-            i += 1
-
-        # write placeholder arrays into a binary npz file
-        np.savez(
-            os.path.join(interim_path, f"{data}_crop_finger.npz"), x=x, y=y
-        )
-
-        # Create a new artifact for the syntetic data, including the function that created it, to Artifacts
-        ds_art = wandb.Artifact(
-            name=f"{data}",
-            type="dataset",
-            description="Processed dataset into uncompressed .npz format",
-            metadata={"X_shape": x.shape, "y_shape": y.shape},
-        )
-
-        # Attach our processed data to the Artifact
-        ds_art.add_file(
-            os.path.join(interim_path, f"{data}_crop_finger.npz")
-        )
-
-        # Log the Artifact
-        run.log_artifact(ds_art)
-
-        wandb.finish
-
-        print(f"Real dataset created ({i} photos)")
+                shutil.copy(im, dst_im)
+                shutil.copy(js, dst_js)
+    print(f"Dataset splitted into {path}")
+    print(
+        f"Train: {round(len(os.listdir(os.path.join(path, 'train')))/2)}, "
+        f"Test: {round(len(os.listdir(os.path.join(path, 'test')))/2)}, "
+        f"Valid: {round(len(os.listdir(os.path.join(path, 'valid')))/2)}"
+    )
 
 
-if __name__ == "__main__":
-    log_fmt = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    logging.basicConfig(level=logging.INFO, format=log_fmt)
-
-    main()
+save_data(config.PROCESSED_PATH, load_data(config.RAW_PATH))

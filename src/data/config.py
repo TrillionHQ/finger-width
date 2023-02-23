@@ -23,14 +23,14 @@ MODELS_PATH = "../../models"
 DATA_TYPE = "real"  # synthetic
 LEN_DATA = len(glob(os.path.join(RAW_PATH, "*.png")))
 # define the amount of data that will be used training
-TEST_SPLIT = 0.25
+TEST_SPLIT = 0.15
 
 # the amount of validation data will be a percentage of the
 # *training* data
 VAL_SPLIT = 0.15
 
 # define input image spatial dimensions
-IMAGE_SIZE = (20, 50, 3)
+IMAGE_SIZE = (224, 224, 3)
 
 DATA_NAME = f"{DATA_TYPE}_{IMAGE_SIZE[0]}x{IMAGE_SIZE[1]}_{LEN_DATA}"
 print(DATA_NAME)
