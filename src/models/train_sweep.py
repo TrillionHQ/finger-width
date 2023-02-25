@@ -33,17 +33,16 @@ sweep_configuration = {
     "name": "sweep",
     "metric": {"goal": "minimize", "name": "val_loss"},
     "parameters": {
-        "im_size": {"value": 224},
-        "batch_size": {"value": 16},
-        "epochs": {"value": 1000},
-        "lr": {"value": 1e-4},
-        "val_split": {"value": 0.15},
-        "earlystop": {"value": 20},
-        "reduce_lr": {"value": 5},
-        "arch": {"value": "Perceptron"},
-        "size_layer1": {"values": [64, 128, 256, 512]},
-        "size_layer2": {"values": [16, 32, 64, 128, 256]},
-        "seed": {"value": 42},
+        "im_size": {"value": config.default_config["im_size"]},
+        "batch_size": {"value": config.default_config["batch_size"]},
+        "epochs": {"value": config.default_config["epochs"]},
+        "lr": {"value": config.default_config["lr"]},
+        "earlystop": {"value": config.default_config["earlystop"]},
+        "reduce_lr": {"value": config.default_config["reduce_lr"]},
+        "arch": {"value": config.default_config["arch"]},
+        "size_layer1": {"values": [16, 32, 64, 128]},
+        "size_layer2": {"values": [8, 16, 32]},
+        "seed": {"value": config.default_config["seed"]},
         "pred_del": {"value": 100},
     },
 }
@@ -78,6 +77,9 @@ def main(
     logger = logging.getLogger(__name__)
     logger.info("Hyperparameter search and model optimization")
 
+    # model_
+    model_name = f"{data}"
+
     wandb.login(key=os.getenv("WANDB_API_KEY"))
     with wandb.init(
         entity=entity,
@@ -90,7 +92,6 @@ def main(
         BS = wandb.config.batch_size
         EPOCHS = wandb.config.epochs
         DEFAULT_LR = wandb.config.lr
-        VAL_SPLIT = wandb.config.val_split
         EARLY_STOPPING_PATIENCE = wandb.config.earlystop
         REDUCE_LR_PATIENCE = wandb.config.reduce_lr
         ARCH = wandb.config.arch
@@ -101,20 +102,9 @@ def main(
 
         """Dataset"""
 
-        train_dataset = dataset(
-            os.path.join(processed_path, "train"),
-            IM_SIZE,
-            IM_SIZE,
-            3,
-            BS,
-        )
-        valid_dataset = dataset(
-            os.path.join(processed_path, "valid"),
-            IM_SIZE,
-            IM_SIZE,
-            3,
-            BS,
-        )
+        train_dataset = dataset(os.path.join(processed_path, "train"), BS, "train")
+        test_dataset = dataset(os.path.join(processed_path, "test"), BS, "test")
+        valid_dataset = dataset(os.path.join(processed_path, "valid"), BS, "valid")
 
         """Loggers"""
         model_path = os.path.join(models_path, f"{data}.h5")
@@ -153,10 +143,10 @@ def main(
         ]
 
         hist = model.fit(
-            train_dataset,
+            train_dataset[0],
             epochs=EPOCHS,
-            # batch_size=BS,
-            validation_data=valid_dataset,
+            batch_size=BS,
+            validation_data=valid_dataset[0],
             callbacks=[callbacks, WandbMetricsLogger()],
             verbose=1,
         )
@@ -183,84 +173,97 @@ def main(
         model_art.add_file(model_path)
         run.log_artifact(model_art)
 
-        # """Predict"""
-        # with CustomObjectScope(
-        #     {
-        #         "mean_absolute_error": metrics.mean_absolute_error,
-        #         "mean_squared_error": metrics.mean_squared_error,
-        #         "r2_score": r2_score,
-        #     }
-        # ):
-        #     images = sorted(glob(os.path.join(test_path, "*.png")))
-        #     js = sorted(glob(os.path.join(test_path, "*.json")))
-        #
-        #     k = 1
-        #     points = {"left": [], "right": []}
-        #     pred_data = []
-        #     for i, j in tqdm(zip(images, js), total=len(images)):
-        #         # read image
-        #         name = i.split("/")[-1]
-        #         img = cv2.imread(i)
-        #         resized = cv2.resize(
-        #             img,
-        #             (config.IMAGE_SIZE[1], config.IMAGE_SIZE[0]),
-        #             interpolation=cv2.INTER_AREA,
-        #         )
-        #         X_test = resized[np.newaxis, :, :, :]
-        #
-        #         """Predict"""
-        #         print("starting predict")
-        #         model = tf.keras.models.load_model(model_path)
-        #         y_pred = model.predict(X_test)
-        #         y_pred = y_pred / PRED_DEL
-        #         points["left"].append(y_pred[0, 0]), points["right"].append(
-        #             y_pred[0, 1]
-        #         )
-        #         x, y = config.IMAGE_SIZE[1], config.IMAGE_SIZE[0]
-        #         start_point_1, end_point_1 = (round(x * y_pred[0, 0]), 0), (
-        #             round(x * y_pred[0, 0]),
-        #             y,
-        #         )
-        #         start_point_2, end_point_2 = (round(x * y_pred[0, 1]), 0), (
-        #             round(x * y_pred[0, 1]),
-        #             y,
-        #         )
-        #         # print(start_point_1, end_point_1)
-        #         # print(y_pred)
-        #         # Green color in BGR
-        #         color = (0, 255, 0)
-        #
-        #         # Line thickness of 9 px
-        #         thickness = 1
-        #
-        #         # # Using cv2.line() method
-        #         # # Draw a diagonal green line with thickness of 9 px
-        #         image = cv2.line(resized, start_point_1, end_point_1, color, thickness)
-        #         image = cv2.line(resized, start_point_2, end_point_2, color, thickness)
-        #
-        #         cv2.imwrite(os.path.join(inference_path, name), resized)
-        #
-        #         pred_data.append(
-        #             [
-        #                 k,
-        #                 wandb.Image(os.path.join(inference_path, name), resized),
-        #                 name,
-        #                 y_pred[0, 0],
-        #                 y_pred[0, 1],
-        #             ]
-        #         )
-        #
-        #         k += 1
-        #
-        # # create a wandb.Table() with corresponding columns
-        # columns = ["id", "image", "name", "left", "right"]
-        # table = wandb.Table(data=pred_data, columns=columns)
-        #
-        # wandb.log({"Table": table})
-        #
-        # wandb.log(
-        #     {"num_images": X_train.shape[0] * (1 - VAL_SPLIT), "model_size": model_size}
-        # )
+        """Predict"""
+        with CustomObjectScope(
+            {
+                "mean_absolute_error": metrics.mean_absolute_error,
+                "mean_squared_error": metrics.mean_squared_error,
+                "r2_score": r2_score,
+            }
+        ):
+            images = sorted(glob(os.path.join(test_path, "*.png")))
+            js = sorted(glob(os.path.join(test_path, "*.json")))
+
+            k = 1
+            points = {"left": [], "right": []}
+            pred_data = []
+            for i, j in tqdm(zip(images, js), total=len(images)):
+                # read image
+                name = i.split("/")[-1]
+                x = cv2.imread(i)
+                resized = cv2.resize(
+                    x,
+                    (config.IMAGE_SIZE[1], config.IMAGE_SIZE[0]),
+                    interpolation=cv2.INTER_AREA,
+                )
+                x = resized / 255.0
+                x = x.astype(np.float32)
+
+                x = x[np.newaxis, :, :, :]
+
+                """Predict"""
+                model = tf.keras.models.load_model(
+                    os.path.join(models_path, f"{data}.h5")
+                )
+                y_pred = model.predict(x)
+                print(y_pred)
+                width, height = config.IMAGE_SIZE[1], config.IMAGE_SIZE[0]
+                start_point_1, end_point_1 = (round(width * y_pred[0, 0]), 0), (
+                    round(width * y_pred[0, 0]),
+                    height,
+                )
+                start_point_2, end_point_2 = (round(width * y_pred[0, 1]), 0), (
+                    round(width * y_pred[0, 1]),
+                    height,
+                )
+
+                # Green color in BGR
+                color = (0, 255, 0)
+
+                # Line thickness of 9 px
+                thickness = 1
+
+                # # Using cv2.line() method
+                # # Draw a diagonal green line with thickness of 9 px
+                resized = cv2.line(
+                    resized, start_point_1, end_point_1, color, thickness
+                )
+                resized = cv2.line(
+                    resized, start_point_2, end_point_2, color, thickness
+                )
+
+                cv2.imwrite(os.path.join(inference_path, name), resized)
+
+                pred_data.append(
+                    [
+                        k,
+                        wandb.Image(os.path.join(inference_path, name), resized),
+                        name,
+                        y_pred[0, 0],
+                        y_pred[0, 1],
+                    ]
+                )
+
+                k += 1
+
+        loss_eval, mse_eval, mae_eval, r2_score_eval = model.evaluate(test_dataset[0])
+
+        # create a wandb.Table() with corresponding columns
+        columns = ["id", "image", "name", "left", "right"]
+        table = wandb.Table(data=pred_data, columns=columns)
+
+        wandb.log({"Table": table})
+
+        wandb.log(
+            {
+                "loss_eval": round(loss_eval, 4),
+                "mse_eval": round(mse_eval, 4),
+                "mae_eval": round(mae_eval, 4),
+                "r2_score_eval": round(r2_score_eval, 4),
+                "num_images": train_dataset[1],
+                "model_size": model_size,
+            }
+        )
         wandb.finish()
 
 
@@ -275,4 +278,4 @@ if __name__ == "__main__":
         entity=os.getenv("WANDB_ENTITY"),
         project=os.getenv("WANDB_PROJECT"),
     )
-    wandb.agent(sweep_id, function=main, count=2)
+    wandb.agent(sweep_id, function=main, count=20)

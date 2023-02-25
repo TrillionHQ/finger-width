@@ -34,16 +34,17 @@ IMAGE_SIZE = (224, 224, 3)
 
 DATA_NAME = f"{DATA_TYPE}_{IMAGE_SIZE[0]}x{IMAGE_SIZE[1]}_{LEN_DATA}"
 print(DATA_NAME)
+
 default_config = dict(
-    img_size=40,
+    im_size=224,
     batch_size=16,
-    epochs=10,
-    lr=0.001,
-    val_split=0.15,
+    epochs=200,
+    lr=1e-4,
     earlystop=20,
     reduce_lr=5,
-    arch="Perceptron",
+    arch="MobileNetV3_Small",
     size_layer1=256,
     size_layer2=32,
     seed=42,
+    pred_del=10
 )
