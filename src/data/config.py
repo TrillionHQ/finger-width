@@ -14,9 +14,9 @@ PROCESSED_PATH = "../../data/processed"
 
 EXTERNAL_PATH = "../../data/external"
 
-TEST_PATH = "../../data/test/images"
+TEST_PATH = "../../data/processed/test/images"
 
-INFERENCE_PATH = "../../data/test/inference"
+INFERENCE_PATH = "../../data/processed/test/inference"
 
 MODELS_PATH = "../../models"
 
@@ -37,13 +37,13 @@ print(DATA_NAME)
 
 default_config = dict(
     im_size=224,
-    batch_size=16,
-    epochs=200,
+    batch_size=32,
+    epochs=10,
     lr=1e-4,
-    earlystop=20,
+    early_stop=10,
     reduce_lr=5,
     arch="MobileNetV3_Small",
-    size_layer1=256,
+    size_layer1=64,
     size_layer2=32,
     seed=42,
     pred_del=10

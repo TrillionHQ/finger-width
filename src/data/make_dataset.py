@@ -5,9 +5,8 @@ from glob import glob
 from sklearn.model_selection import train_test_split
 
 
-
 def create_dir(path):
-    """ Creating a directory """
+    """Creating a directory"""
     if not os.path.exists(path):
         os.makedirs(path)
     return path
@@ -31,7 +30,7 @@ def load_data(path, split=0.1):
 
 
 def save_data(path, splited_data):
-    folders = ["train", "test", "valid"]
+    folders = ["train", "evaluate", "valid"]
     for i, d in enumerate(folders):
         dst_dir = create_dir(os.path.join(path, d))
 
@@ -46,7 +45,7 @@ def save_data(path, splited_data):
     print(f"Dataset splitted into {path}")
     print(
         f"Train: {round(len(os.listdir(os.path.join(path, 'train')))/2)}, "
-        f"Test: {round(len(os.listdir(os.path.join(path, 'test')))/2)}, "
+        f"Evaluate: {round(len(os.listdir(os.path.join(path, 'evaluate')))/2)}, "
         f"Valid: {round(len(os.listdir(os.path.join(path, 'valid')))/2)}"
     )
 

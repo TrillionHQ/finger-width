@@ -48,8 +48,8 @@ def train(processed_path: str, models_path: str) -> None:
     train_dataset = dataset(
         os.path.join(processed_path, "train"), BS, "train"
     )
-    test_dataset = dataset(
-        os.path.join(processed_path, "test"), BS, "test"
+    evaluate_dataset = dataset(
+        os.path.join(processed_path, "evaluate"), BS, "evaluate"
     )
     valid_dataset = dataset(
         os.path.join(processed_path, "valid"), BS, "valid"
@@ -60,7 +60,7 @@ def train(processed_path: str, models_path: str) -> None:
     csv_path = os.path.join(models_path, f"{config.DATA_NAME}_logger.csv")
 
     """Model"""
-    model = mobilenetv3_small(IM_SIZE, IM_SIZE, 3)
+    model = mobilenetv3_small(IM_SIZE, IM_SIZE, 3, 64)
 
     # Compile the model
     opt = Adam(learning_rate=DEFAULT_LR)
@@ -100,7 +100,7 @@ def train(processed_path: str, models_path: str) -> None:
         verbose=1,
     )
 
-    loss_eval, mse_eval, mae_eval, r2_score_eval = model.evaluate(test_dataset[0])
+    loss_eval, mse_eval, mae_eval, r2_score_eval = model.evaluate(evaluate_dataset[0])
 
     """Save the Trained Model to W&B Artifacts"""
     model.save(model_path)

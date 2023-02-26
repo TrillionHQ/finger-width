@@ -17,6 +17,7 @@ from metrics import r2_score
 from dotenv import load_dotenv
 from wandb.keras import WandbMetricsLogger
 from tensorflow.keras.optimizers import Adam
+from keras.utils.layer_utils import count_params
 from tensorflow.keras.utils import CustomObjectScope
 from tensorflow.keras.callbacks import (
     ModelCheckpoint,
@@ -37,13 +38,13 @@ sweep_configuration = {
         "batch_size": {"value": config.default_config["batch_size"]},
         "epochs": {"value": config.default_config["epochs"]},
         "lr": {"value": config.default_config["lr"]},
-        "earlystop": {"value": config.default_config["earlystop"]},
+        "early_stop": {"value": config.default_config["early_stop"]},
         "reduce_lr": {"value": config.default_config["reduce_lr"]},
         "arch": {"value": config.default_config["arch"]},
-        "size_layer1": {"values": [16, 32, 64, 128]},
-        "size_layer2": {"values": [8, 16, 32]},
+        "size_layer1": {"values": [16, 32, 64, 128, 256]},
+        # "size_layer2": {"values": [8, 16, 32, 64]},
         "seed": {"value": config.default_config["seed"]},
-        "pred_del": {"value": 100},
+        # "pred_del": {"value": 100},
     },
 }
 
@@ -92,18 +93,18 @@ def main(
         BS = wandb.config.batch_size
         EPOCHS = wandb.config.epochs
         DEFAULT_LR = wandb.config.lr
-        EARLY_STOPPING_PATIENCE = wandb.config.earlystop
+        EARLY_STOPPING_PATIENCE = wandb.config.early_stop
         REDUCE_LR_PATIENCE = wandb.config.reduce_lr
         ARCH = wandb.config.arch
         SIZE_LAYER_1 = wandb.config.size_layer1
-        SIZE_LAYER_2 = wandb.config.size_layer2
+        # SIZE_LAYER_2 = wandb.config.size_layer2
         SEED = wandb.config.seed
-        PRED_DEL = wandb.config.pred_del
+        # PRED_DEL = wandb.config.pred_del
 
         """Dataset"""
 
         train_dataset = dataset(os.path.join(processed_path, "train"), BS, "train")
-        test_dataset = dataset(os.path.join(processed_path, "test"), BS, "test")
+        evaluate_dataset = dataset(os.path.join(processed_path, "evaluate"), BS, "evaluate")
         valid_dataset = dataset(os.path.join(processed_path, "valid"), BS, "valid")
 
         """Loggers"""
@@ -111,7 +112,7 @@ def main(
         csv_path = os.path.join(models_path, f"{data}_logger.csv")
 
         """Model"""
-        model = mobilenetv3_small(IM_SIZE, IM_SIZE, 3)
+        model = mobilenetv3_small(IM_SIZE, IM_SIZE, 3, SIZE_LAYER_1)
 
         # Compile the model
         opt = Adam(learning_rate=DEFAULT_LR)
@@ -122,7 +123,7 @@ def main(
         )
 
         # Print a summary of the model's architecture
-        model.summary()
+        # model.summary()
 
         callbacks = [
             ModelCheckpoint(model_path, verbose=1, save_best_only=True),
@@ -138,7 +139,7 @@ def main(
             EarlyStopping(
                 monitor="val_loss",
                 patience=EARLY_STOPPING_PATIENCE,
-                restore_best_weights=False,
+                restore_best_weights=True,
             ),
         ]
 
@@ -246,7 +247,7 @@ def main(
 
                 k += 1
 
-        loss_eval, mse_eval, mae_eval, r2_score_eval = model.evaluate(test_dataset[0])
+        loss_eval, mse_eval, mae_eval, r2_score_eval = model.evaluate(evaluate_dataset[0])
 
         # create a wandb.Table() with corresponding columns
         columns = ["id", "image", "name", "left", "right"]
@@ -262,6 +263,8 @@ def main(
                 "r2_score_eval": round(r2_score_eval, 4),
                 "num_images": train_dataset[1],
                 "model_size": model_size,
+                "trainable_params": count_params(model.trainable_weights),
+                "non_trainable_params": count_params(model.non_trainable_weights),
             }
         )
         wandb.finish()
@@ -278,4 +281,4 @@ if __name__ == "__main__":
         entity=os.getenv("WANDB_ENTITY"),
         project=os.getenv("WANDB_PROJECT"),
     )
-    wandb.agent(sweep_id, function=main, count=20)
+    wandb.agent(sweep_id, function=main, count=25)
