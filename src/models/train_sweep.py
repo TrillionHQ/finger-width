@@ -16,10 +16,10 @@ from src.data import config
 from metrics import r2_score
 from dotenv import load_dotenv
 from wandb.keras import WandbMetricsLogger
-from tensorflow.keras.optimizers import Adam
+from keras.optimizers import Adam
 from keras.utils.layer_utils import count_params
-from tensorflow.keras.utils import CustomObjectScope
-from tensorflow.keras.callbacks import (
+from keras.utils import CustomObjectScope
+from keras.callbacks import (
     ModelCheckpoint,
     CSVLogger,
     ReduceLROnPlateau,
@@ -41,8 +41,8 @@ sweep_configuration = {
         "early_stop": {"value": config.default_config["early_stop"]},
         "reduce_lr": {"value": config.default_config["reduce_lr"]},
         "arch": {"value": config.default_config["arch"]},
-        "alpha": {"value": config.default_config["alpha"]},
-        # "alpha": {"values": [1.0, 2.5, 5.0, 7.5]},
+        # "alpha": {"value": config.default_config["alpha"]},
+        "alpha": {"values": [0.75, 1.0]},
         "size_layer1": {"values": [16, 32, 64, 128, 256]},
         "seed": {"value": config.default_config["seed"]},
     },
