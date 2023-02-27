@@ -19,6 +19,7 @@ def shuffling(x, y):
 def load_data(path):
     x = sorted(glob(os.path.join(path, "*.png")))
     y = sorted(glob(os.path.join(path, "*.json")))
+
     return x, y
 
 
@@ -26,7 +27,7 @@ def read_image(path):
     path = path.decode()
     x = cv2.imread(path, cv2.IMREAD_COLOR)
     x = cv2.resize(
-        x, (config.IMAGE_SIZE[1], config.IMAGE_SIZE[0]), interpolation=cv2.INTER_AREA
+        x, (config.IMAGE_SIZE, config.IMAGE_SIZE), interpolation=cv2.INTER_AREA
     )
     x = x / 255.0
     x = x.astype(np.float32)
@@ -48,7 +49,7 @@ def tf_parse(x, y):
         return x, y
 
     x, y = tf.numpy_function(_parse, [x, y], [tf.float32, tf.float32])
-    x.set_shape([config.IMAGE_SIZE[0], config.IMAGE_SIZE[1], config.IMAGE_SIZE[2]])
+    x.set_shape([config.IMAGE_SIZE, config.IMAGE_SIZE, 3])
     y.set_shape(
         [
             2,
@@ -77,7 +78,7 @@ def dataset(
     train_x, train_y = load_data(raw_path)
     train_x, train_y = shuffling(train_x, train_y)
 
-    print(f"{type_data.upper()} data generator dataset created ({len(train_x)} photos)")
+    print(f"{type_data.upper()} data generator dataset created {len(train_x)} photos with {config.IMAGE_SIZE} resolution")
 
     data = tf_dataset(train_x, train_y, batch=batch_size)
 
@@ -98,5 +99,3 @@ if __name__ == "__main__":
         # print("Batch is..")
         # print(batch)  # read first batch
         break
-
-    print(train_dataset[1])

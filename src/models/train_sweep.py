@@ -36,15 +36,15 @@ sweep_configuration = {
     "parameters": {
         "im_size": {"value": config.default_config["im_size"]},
         "batch_size": {"value": config.default_config["batch_size"]},
-        "epochs": {"value": config.default_config["epochs"]},
+        "epochs": {"values": [50, 100]},
         "lr": {"value": config.default_config["lr"]},
         "early_stop": {"value": config.default_config["early_stop"]},
         "reduce_lr": {"value": config.default_config["reduce_lr"]},
         "arch": {"value": config.default_config["arch"]},
+        "alpha": {"value": config.default_config["alpha"]},
+        # "alpha": {"values": [1.0, 2.5, 5.0, 7.5]},
         "size_layer1": {"values": [16, 32, 64, 128, 256]},
-        # "size_layer2": {"values": [8, 16, 32, 64]},
         "seed": {"value": config.default_config["seed"]},
-        # "pred_del": {"value": 100},
     },
 }
 
@@ -70,15 +70,19 @@ def main(
 ) -> None:
     """
     Hyperparameter search and model optimization
-    :param raw_path
-    :param models_path
-    :param data
+    :param processed_path:
+    :param models_path:
+    :param test_path:
+    :param inference_path:
+    :param data:
+    :param entity:
+    :param project:
     :return:
     """
     logger = logging.getLogger(__name__)
     logger.info("Hyperparameter search and model optimization")
 
-    # model_
+    # model
     model_name = f"{data}"
 
     wandb.login(key=os.getenv("WANDB_API_KEY"))
@@ -96,15 +100,16 @@ def main(
         EARLY_STOPPING_PATIENCE = wandb.config.early_stop
         REDUCE_LR_PATIENCE = wandb.config.reduce_lr
         ARCH = wandb.config.arch
+        ALPHA = float(wandb.config.alpha)
         SIZE_LAYER_1 = wandb.config.size_layer1
-        # SIZE_LAYER_2 = wandb.config.size_layer2
         SEED = wandb.config.seed
-        # PRED_DEL = wandb.config.pred_del
 
-        """Dataset"""
+        """Data"""
 
         train_dataset = dataset(os.path.join(processed_path, "train"), BS, "train")
-        evaluate_dataset = dataset(os.path.join(processed_path, "evaluate"), BS, "evaluate")
+        evaluate_dataset = dataset(
+            os.path.join(processed_path, "evaluate"), BS, "evaluate"
+        )
         valid_dataset = dataset(os.path.join(processed_path, "valid"), BS, "valid")
 
         """Loggers"""
@@ -112,7 +117,7 @@ def main(
         csv_path = os.path.join(models_path, f"{data}_logger.csv")
 
         """Model"""
-        model = mobilenetv3_small(IM_SIZE, IM_SIZE, 3, SIZE_LAYER_1)
+        model = mobilenetv3_small(IM_SIZE, 3, SIZE_LAYER_1, ALPHA)
 
         # Compile the model
         opt = Adam(learning_rate=DEFAULT_LR)
@@ -121,9 +126,6 @@ def main(
             loss="mean_squared_error",
             metrics=[metrics.mean_squared_error, metrics.mean_absolute_error, r2_score],
         )
-
-        # Print a summary of the model's architecture
-        # model.summary()
 
         callbacks = [
             ModelCheckpoint(model_path, verbose=1, save_best_only=True),
@@ -194,7 +196,7 @@ def main(
                 x = cv2.imread(i)
                 resized = cv2.resize(
                     x,
-                    (config.IMAGE_SIZE[1], config.IMAGE_SIZE[0]),
+                    (config.IMAGE_SIZE, config.IMAGE_SIZE),
                     interpolation=cv2.INTER_AREA,
                 )
                 x = resized / 255.0
@@ -208,7 +210,7 @@ def main(
                 )
                 y_pred = model.predict(x)
                 print(y_pred)
-                width, height = config.IMAGE_SIZE[1], config.IMAGE_SIZE[0]
+                width, height = config.IMAGE_SIZE, config.IMAGE_SIZE
                 start_point_1, end_point_1 = (round(width * y_pred[0, 0]), 0), (
                     round(width * y_pred[0, 0]),
                     height,
@@ -247,7 +249,9 @@ def main(
 
                 k += 1
 
-        loss_eval, mse_eval, mae_eval, r2_score_eval = model.evaluate(evaluate_dataset[0])
+        loss_eval, mse_eval, mae_eval, r2_score_eval = model.evaluate(
+            evaluate_dataset[0]
+        )
 
         # create a wandb.Table() with corresponding columns
         columns = ["id", "image", "name", "left", "right"]
@@ -281,4 +285,4 @@ if __name__ == "__main__":
         entity=os.getenv("WANDB_ENTITY"),
         project=os.getenv("WANDB_PROJECT"),
     )
-    wandb.agent(sweep_id, function=main, count=25)
+    wandb.agent(sweep_id, function=main, count=10)

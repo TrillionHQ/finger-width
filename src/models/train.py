@@ -35,13 +35,12 @@ def train(processed_path: str, models_path: str) -> None:
     BS = config.default_config["batch_size"]
     EPOCHS = config.default_config["epochs"]
     DEFAULT_LR = config.default_config["lr"]
-    EARLY_STOPPING_PATIENCE = config.default_config["earlystop"]
+    EARLY_STOPPING_PATIENCE = config.default_config["early_stop"]
     REDUCE_LR_PATIENCE = config.default_config["reduce_lr"]
     ARCH = config.default_config["arch"]
     SIZE_LAYER_1 = config.default_config["size_layer1"]
-    SIZE_LAYER_2 = config.default_config["size_layer2"]
+    ALPHA = config.default_config["alpha"]
     SEED = config.default_config["seed"]
-    PRED_DEL = config.default_config["pred_del"]
 
     """Dataset"""
 
@@ -60,7 +59,7 @@ def train(processed_path: str, models_path: str) -> None:
     csv_path = os.path.join(models_path, f"{config.DATA_NAME}_logger.csv")
 
     """Model"""
-    model = mobilenetv3_small(IM_SIZE, IM_SIZE, 3, 64)
+    model = mobilenetv3_small(im_size=IM_SIZE, channels=3, units1=64, alpha=ALPHA)
 
     # Compile the model
     opt = Adam(learning_rate=DEFAULT_LR)

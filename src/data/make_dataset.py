@@ -2,6 +2,7 @@ import config
 import shutil
 import os
 from glob import glob
+from functools import reduce
 from sklearn.model_selection import train_test_split
 
 
@@ -17,7 +18,7 @@ def load_data(path, split=0.1):
     X = sorted(glob(os.path.join(path, "*.png")))
     Y = sorted(glob(os.path.join(path, "*.json")))
 
-    """ Spliting the data into training and testing """
+    """ Splitting the data into training and testing """
     split_size = int(len(X) * split)
 
     train_x, test_x = train_test_split(X, test_size=split_size, random_state=42)
@@ -29,12 +30,12 @@ def load_data(path, split=0.1):
     return (train_x, train_y), (test_x, test_y), (val_x, val_y)
 
 
-def save_data(path, splited_data):
+def save_data(path, split_data):
     folders = ["train", "evaluate", "valid"]
     for i, d in enumerate(folders):
         dst_dir = create_dir(os.path.join(path, d))
 
-        for im, js in zip(splited_data[i][0], splited_data[i][1]):
+        for im, js in zip(split_data[i][0], split_data[i][1]):
             dst_im = os.path.join(dst_dir, im.split("/")[-1])
             dst_js = os.path.join(dst_dir, js.split("/")[-1])
             if os.path.isfile(dst_im):
