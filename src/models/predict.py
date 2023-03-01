@@ -11,7 +11,8 @@ from glob import glob
 from tqdm import tqdm
 from metrics import r2_score
 from src.data import config
-from tensorflow.keras.utils import CustomObjectScope
+from src.data.make_dataset import draw_line, image_resized
+from keras.utils import CustomObjectScope
 from keras.metrics import mean_squared_error, mean_absolute_error
 
 
@@ -32,9 +33,6 @@ def predict(test_path: str, models_path: str, inference_path: str, data: str) ->
     logger = logging.getLogger(__name__)
     logger.info("Prediction")
 
-    # download model from artifact
-    model_name = f"{data}"
-
     # Predict the model on the test data
     """ Loading model """
     with CustomObjectScope(
@@ -50,46 +48,23 @@ def predict(test_path: str, models_path: str, inference_path: str, data: str) ->
         for i, j in tqdm(zip(images, js), total=len(images)):
             # read image
             name = i.split("/")[-1]
-            x = cv2.imread(i)
-            resized = cv2.resize(
-                x,
-                (config.IMAGE_SIZE[1], config.IMAGE_SIZE[0]),
-                interpolation=cv2.INTER_AREA,
-            )
-            x = resized / 255.0
-            x = x.astype(np.float32)
-
-            x = x[np.newaxis, :, :, :]
+            x, resized = image_resized(i, config.IMAGE_SIZE)
 
             """Predict"""
             model = tf.keras.models.load_model(
-                os.path.join(models_path, f"{model_name}.h5")
+                os.path.join(models_path, f"{data}.h5")
             )
             y_pred = model.predict(x)
             print(y_pred)
-            width, height = config.IMAGE_SIZE[1], config.IMAGE_SIZE[0]
-            start_point_1, end_point_1 = (round(width * y_pred[0, 0]), 0), (
-                round(width * y_pred[0, 0]),
-                height,
+
+            pred_image = draw_line(
+                config.IMAGE_SIZE,
+                name,
+                y_pred[0, 0],
+                y_pred[0, 1],
+                resized,
+                inference_path,
             )
-            start_point_2, end_point_2 = (round(width * y_pred[0, 1]), 0), (
-                round(width * y_pred[0, 1]),
-                height,
-            )
-
-            # Green color in BGR
-            color = (0, 255, 0)
-
-            # Line thickness of 9 px
-            thickness = 1
-
-            # # Using cv2.line() method
-            # # Draw a diagonal green line with thickness of 9 px
-            resized = cv2.line(resized, start_point_1, end_point_1, color, thickness)
-            resized = cv2.line(resized, start_point_2, end_point_2, color, thickness)
-
-            cv2.imwrite(os.path.join(inference_path, name), resized)
-
 
 
 if __name__ == "__main__":

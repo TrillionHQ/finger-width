@@ -12,6 +12,7 @@ from glob import glob
 from keras import metrics
 from model import mobilenetv3_small
 from src.data.data_generator import dataset
+from src.data.make_dataset import draw_line, image_resized
 from src.data import config
 from metrics import r2_score
 from dotenv import load_dotenv
@@ -41,7 +42,6 @@ sweep_configuration = {
         "early_stop": {"value": config.default_config["early_stop"]},
         "reduce_lr": {"value": config.default_config["reduce_lr"]},
         "arch": {"value": config.default_config["arch"]},
-        # "alpha": {"value": config.default_config["alpha"]},
         "alpha": {"values": [0.75, 1.0]},
         "size_layer1": {"values": [16, 32, 64, 128, 256]},
         "seed": {"value": config.default_config["seed"]},
@@ -92,35 +92,32 @@ def main(
         job_type="sweep",
         tags=[f"{data}"],
     ) as run:
-        # get sweep parameters
-        IM_SIZE = wandb.config.im_size
-        BS = wandb.config.batch_size
-        EPOCHS = wandb.config.epochs
-        DEFAULT_LR = wandb.config.lr
-        EARLY_STOPPING_PATIENCE = wandb.config.early_stop
-        REDUCE_LR_PATIENCE = wandb.config.reduce_lr
-        ARCH = wandb.config.arch
-        ALPHA = float(wandb.config.alpha)
-        SIZE_LAYER_1 = wandb.config.size_layer1
-        SEED = wandb.config.seed
 
         """Data"""
 
-        train_dataset = dataset(os.path.join(processed_path, "train"), BS, "train")
-        evaluate_dataset = dataset(
-            os.path.join(processed_path, "evaluate"), BS, "evaluate"
+        train_dataset = dataset(
+            os.path.join(processed_path, "train"), wandb.config.batch_size, "train"
         )
-        valid_dataset = dataset(os.path.join(processed_path, "valid"), BS, "valid")
+        evaluate_dataset = dataset(
+            os.path.join(processed_path, "evaluate"),
+            wandb.config.batch_size,
+            "evaluate",
+        )
+        valid_dataset = dataset(
+            os.path.join(processed_path, "valid"), wandb.config.batch_size, "valid"
+        )
 
         """Loggers"""
         model_path = os.path.join(models_path, f"{data}.h5")
         csv_path = os.path.join(models_path, f"{data}_logger.csv")
 
         """Model"""
-        model = mobilenetv3_small(IM_SIZE, 3, SIZE_LAYER_1, ALPHA)
+        model = mobilenetv3_small(
+            wandb.config.im_size, 3, wandb.config.size_layer1, float(wandb.config.alpha)
+        )
 
         # Compile the model
-        opt = Adam(learning_rate=DEFAULT_LR)
+        opt = Adam(learning_rate=wandb.config.lr)
         model.compile(
             optimizer=opt,
             loss="mean_squared_error",
@@ -132,7 +129,7 @@ def main(
             ReduceLROnPlateau(
                 monitor="val_loss",
                 factor=0.1,
-                patience=REDUCE_LR_PATIENCE,
+                patience=wandb.config.reduce_lr,
                 min_lr=1e-7,
                 verbose=1,
             ),
@@ -140,15 +137,15 @@ def main(
             TensorBoard(),
             EarlyStopping(
                 monitor="val_loss",
-                patience=EARLY_STOPPING_PATIENCE,
+                patience=wandb.config.early_stop,
                 restore_best_weights=True,
             ),
         ]
 
         hist = model.fit(
             train_dataset[0],
-            epochs=EPOCHS,
-            batch_size=BS,
+            epochs=wandb.config.epochs,
+            batch_size=wandb.config.batch_size,
             validation_data=valid_dataset[0],
             callbacks=[callbacks, WandbMetricsLogger()],
             verbose=1,
@@ -193,16 +190,8 @@ def main(
             for i, j in tqdm(zip(images, js), total=len(images)):
                 # read image
                 name = i.split("/")[-1]
-                x = cv2.imread(i)
-                resized = cv2.resize(
-                    x,
-                    (config.IMAGE_SIZE, config.IMAGE_SIZE),
-                    interpolation=cv2.INTER_AREA,
-                )
-                x = resized / 255.0
-                x = x.astype(np.float32)
 
-                x = x[np.newaxis, :, :, :]
+                x, resized = image_resized(i, wandb.config.im_size)
 
                 """Predict"""
                 model = tf.keras.models.load_model(
@@ -210,37 +199,20 @@ def main(
                 )
                 y_pred = model.predict(x)
                 print(y_pred)
-                width, height = config.IMAGE_SIZE, config.IMAGE_SIZE
-                start_point_1, end_point_1 = (round(width * y_pred[0, 0]), 0), (
-                    round(width * y_pred[0, 0]),
-                    height,
-                )
-                start_point_2, end_point_2 = (round(width * y_pred[0, 1]), 0), (
-                    round(width * y_pred[0, 1]),
-                    height,
-                )
 
-                # Green color in BGR
-                color = (0, 255, 0)
-
-                # Line thickness of 9 px
-                thickness = 1
-
-                # # Using cv2.line() method
-                # # Draw a diagonal green line with thickness of 9 px
-                resized = cv2.line(
-                    resized, start_point_1, end_point_1, color, thickness
+                pred_image = draw_line(
+                    wandb.config.im_size,
+                    name,
+                    y_pred[0, 0],
+                    y_pred[0, 1],
+                    resized,
+                    inference_path,
                 )
-                resized = cv2.line(
-                    resized, start_point_2, end_point_2, color, thickness
-                )
-
-                cv2.imwrite(os.path.join(inference_path, name), resized)
 
                 pred_data.append(
                     [
                         k,
-                        wandb.Image(os.path.join(inference_path, name), resized),
+                        wandb.Image(os.path.join(inference_path, name), pred_image),
                         name,
                         y_pred[0, 0],
                         y_pred[0, 1],
@@ -285,4 +257,4 @@ if __name__ == "__main__":
         entity=os.getenv("WANDB_ENTITY"),
         project=os.getenv("WANDB_PROJECT"),
     )
-    wandb.agent(sweep_id, function=main, count=10)
+    wandb.agent(sweep_id, function=main, count=20)

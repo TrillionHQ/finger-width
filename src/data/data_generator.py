@@ -78,7 +78,7 @@ def dataset(
     train_x, train_y = load_data(raw_path)
     train_x, train_y = shuffling(train_x, train_y)
 
-    print(f"{type_data.upper()} data generator dataset created {len(train_x)} photos with {config.IMAGE_SIZE} resolution")
+    print(f"[INFO] {type_data.upper()} data generator dataset created {len(train_x)} photos with {config.IMAGE_SIZE} resolution")
 
     data = tf_dataset(train_x, train_y, batch=batch_size)
 
