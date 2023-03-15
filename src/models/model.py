@@ -1,3 +1,4 @@
+import os
 from src.data import config
 from keras.models import Model
 from keras.engine.functional import Functional
@@ -7,10 +8,11 @@ from keras.layers import GlobalAveragePooling2D, Dense, Input
 
 
 def mobilenetv3_small(
-    im_size: int, channels: int, units1: int, alpha: int
+    im_size: int, channels: int, units1: int, alpha: int, freeze: int
 ) -> Functional:
     """
     MobileNetV3 Small
+    :param freeze:
     :param im_size:
     :param channels:
     :param units1:
@@ -24,7 +26,7 @@ def mobilenetv3_small(
     backbone = MobileNetV3Small(
         weights="imagenet", input_tensor=inputs, alpha=alpha, include_top=False
     )
-    for layer in backbone.layers:  # Freeze the layers
+    for layer in backbone.layers[:-freeze]:  # Freeze the layers
         layer.trainable = False
 
     x = GlobalAveragePooling2D()(backbone.output)
@@ -36,7 +38,7 @@ def mobilenetv3_small(
     return model
 
 def mobilenetv3_large(
-    im_size: int, channels: int, units1: int, alpha: int
+    im_size: int, channels: int, units1: int, alpha: float
 ) -> Functional:
     """
     MobileNetV3 Small
@@ -47,6 +49,7 @@ def mobilenetv3_large(
     and width multiplier α, the number of input channels M becomes αM and the number of output channels N becomes αN
     :return:
     """
+    models_path = '../../data/models'
     shape = (im_size, im_size, channels)
     inputs = Input(shape)
 
@@ -55,7 +58,7 @@ def mobilenetv3_large(
     )
     alpha = str(alpha).replace('.', '_')
     print(f'Using mobilenet_{alpha}_{im_size}_tf_no_top.h5')
-    backbone.load_weights(f'mobilenet_{alpha}_{im_size}_tf_no_top.h5')
+    backbone.load_weights(os.path.join(models_path, f'mobilenet_{alpha}_{im_size}_tf_no_top.h5'), by_name=True)
 
     for layer in backbone.layers:  # Freeze the layers
         layer.trainable = False

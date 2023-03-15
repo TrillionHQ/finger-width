@@ -135,13 +135,12 @@ def parse_data(
     lst1: list[str], lst2: list[str], src: str, dst: str, im_size: int
 ) -> None:
     """
-    Parse through folders, draw lines and save images to data/external
+    Function for labeling checking. Parse through folders, draw lines and save images to data/external
     :param im_size:
-    :param dst:
     :param src:
+    :param dst:
     :param lst1:
     :param lst2:
-    :param src_dst:
     :return:
     """
     im, js = clean_data(lst1, lst2, src)
@@ -221,5 +220,6 @@ def split_data(path: str, loaded_data: tuple[tuple[Any, Any], tuple[Any, Any], t
 if __name__ == "__main__":
     log_fmt = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     logging.basicConfig(level=logging.INFO, format=log_fmt)
-    split_data(path=config.RAW_PATH, loaded_data=load_data(config.RAW_PATH, config.EXTERNAL_PATH, config.IMAGE_SIZE))
+
+    split_data(path=config.PROCESSED_PATH, loaded_data=load_data(config.RAW_PATH, config.EXTERNAL_PATH, config.IMAGE_SIZE))
 
