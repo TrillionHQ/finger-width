@@ -1,6 +1,7 @@
 import os
 import cv2
 import json
+import click
 import shutil
 import logging
 import numpy as np
@@ -190,16 +191,25 @@ def load_data(
     return (train_x, train_y), (test_x, test_y), (val_x, val_y)
 
 
-def split_data(path: str, loaded_data: tuple[tuple[Any, Any], tuple[Any, Any], tuple[Any, Any]]):
+@click.command()
+@click.argument("raw_path", default=config.RAW_PATH, type=click.Path(exists=True))
+@click.argument(
+    "processed_path", default=config.PROCESSED_PATH, type=click.Path()
+)
+@click.argument("external_path", default=config.EXTERNAL_PATH, type=click.Path())
+def split_data(raw_path: str, processed_path: str, external_path: str):
     """
     Split dataset to train/valid/evaluate
-    :param path:
-    :param loaded_data:
+    :param raw_path:
+    :param processed_path:
+    :param external_path:
     :return:
     """
+    loaded_data = load_data(raw_path, external_path, config.default_config["im_size"])
+
     folders = ["train", "evaluate", "valid"]
     for i, d in enumerate(folders):
-        dst_dir = create_dir(os.path.join(path, d))
+        dst_dir = create_dir(os.path.join(processed_path, d))
 
         for im, js in zip(loaded_data[i][0], loaded_data[i][1]):
             dst_im = os.path.join(dst_dir, im.split("/")[-1])
@@ -209,11 +219,11 @@ def split_data(path: str, loaded_data: tuple[tuple[Any, Any], tuple[Any, Any], t
             else:
                 shutil.copy(im, dst_im)
                 shutil.copy(js, dst_js)
-    print(f"[INFO] Dataset split into {path}")
+    print(f"[INFO] Dataset split into {processed_path}")
     print(
-        f"Train: {round(len(os.listdir(os.path.join(path, 'train'))) / 2)}, "
-        f"Evaluate: {round(len(os.listdir(os.path.join(path, 'evaluate'))) / 2)}, "
-        f"Valid: {round(len(os.listdir(os.path.join(path, 'valid'))) / 2)}"
+        f"Train: {round(len(os.listdir(os.path.join(processed_path, 'train'))) / 2)}, "
+        f"Evaluate: {round(len(os.listdir(os.path.join(processed_path, 'evaluate'))) / 2)}, "
+        f"Valid: {round(len(os.listdir(os.path.join(processed_path, 'valid'))) / 2)}"
     )
 
 
@@ -221,5 +231,5 @@ if __name__ == "__main__":
     log_fmt = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     logging.basicConfig(level=logging.INFO, format=log_fmt)
 
-    split_data(path=config.PROCESSED_PATH, loaded_data=load_data(config.RAW_PATH, config.EXTERNAL_PATH, config.IMAGE_SIZE))
+    split_data()
 
