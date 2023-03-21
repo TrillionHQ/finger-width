@@ -30,7 +30,7 @@ TEST_SPLIT = 0.15
 VAL_SPLIT = 0.15
 
 # define input image spatial dimensions
-IMAGE_SIZE = 224
+IMAGE_SIZE = 256
 
 DATA_NAME = f"{DATA_TYPE}_{IMAGE_SIZE}_{LEN_DATA}"
 print(DATA_NAME)
@@ -38,8 +38,8 @@ print(DATA_NAME)
 default_config = dict(
     im_size=IMAGE_SIZE,
     batch_size=32,
-    epochs=200,
-    lr=1e-4,
+    epochs=20,
+    lr=0.002,
     early_stop=10,
     reduce_lr=5,
     arch="MobileNetV3_Small",

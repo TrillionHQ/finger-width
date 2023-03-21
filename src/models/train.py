@@ -6,10 +6,10 @@ import logging
 from keras import metrics
 from metrics import r2_score
 from src.data import config
-from model import mobilenetv3_small
+from model import create_mobilevit
 from src.data.data_generator import dataset
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import (
+from keras.optimizers import Adam
+from keras.callbacks import (
     ModelCheckpoint,
     CSVLogger,
     ReduceLROnPlateau,
@@ -59,7 +59,7 @@ def train(processed_path: str, models_path: str) -> None:
     csv_path = os.path.join(models_path, f"{config.DATA_NAME}_logger.csv")
 
     """Model"""
-    model = mobilenetv3_small(im_size=IM_SIZE, channels=3, units1=64, alpha=ALPHA)
+    model = create_mobilevit(im_size=IM_SIZE, channels=3, num_classes=2)
 
     # Compile the model
     opt = Adam(learning_rate=DEFAULT_LR)
