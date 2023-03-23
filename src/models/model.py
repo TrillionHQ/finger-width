@@ -112,12 +112,12 @@ def mobilevit_block(x, num_blocks, projection_dim, strides=1):
     return local_global_features
 
 
-def create_mobilevit(im_size: int, channels: int, num_classes: int, ) -> Functional:
+def create_mobilevit(im_size: int, channels: int, num_outputs: int, ) -> Functional:
     """
 
     :param im_size:
     :param channels:
-    :param num_classes:
+    :param num_outputs:
     :return:
     """
     inputs = Input((im_size, im_size, channels))
@@ -164,7 +164,7 @@ def create_mobilevit(im_size: int, channels: int, num_classes: int, ) -> Functio
     # Classification head.
     x = layers.GlobalAvgPool2D()(x)
     # outputs = layers.Dense(num_classes, activation="softmax")(x)
-    outputs = layers.Dense(num_classes, activation="linear")(x)
+    outputs = layers.Dense(num_outputs, activation="linear")(x)
 
     return Model(inputs, outputs)
 

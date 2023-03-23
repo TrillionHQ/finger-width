@@ -4,13 +4,12 @@ import cv2
 import wandb
 import click
 import logging
-import numpy as np
 import tensorflow as tf
 
 from tqdm import tqdm
 from glob import glob
 from keras import metrics
-from model import mobilenetv3_small, mobilenetv3_large
+from model import create_mobilevit
 from src.data.data_generator import dataset
 from src.data.make_dataset import draw_line, image_resized
 from src.data import config
@@ -37,14 +36,12 @@ sweep_configuration = {
     "parameters": {
         "im_size": {"value": config.default_config["im_size"]},
         "batch_size": {"value": config.default_config["batch_size"]},
-        "epochs": {"value": 100},
+        "epochs": {"values": [5, 10]},
         "lr": {"value": config.default_config["lr"]},
         "early_stop": {"value": config.default_config["early_stop"]},
         "reduce_lr": {"value": config.default_config["reduce_lr"]},
         "arch": {"value": config.default_config["arch"]},
         "alpha": {"value": config.default_config["alpha"]},
-        "size_layer1": {"value": 16},
-        "freeze": {"values": [10, 20, 30, 40, 50]},
         "seed": {"value": config.default_config["seed"]},
     },
 }
@@ -113,14 +110,7 @@ def main(
         csv_path = os.path.join(models_path, f"{data}_logger.csv")
 
         """Model"""
-        if 'Small' in wandb.config.arch:
-            model = mobilenetv3_small(
-                wandb.config.im_size, 3, wandb.config.size_layer1, float(wandb.config.alpha), wandb.config.freeze
-            )
-        else:
-            model = mobilenetv3_large(
-                wandb.config.im_size, 3, wandb.config.size_layer1, float(wandb.config.alpha)
-            )
+        model = create_mobilevit(im_size=wandb.config.im_size, channels=3, num_outputs=2)
 
         # Compile the model
         opt = Adam(learning_rate=wandb.config.lr)
@@ -263,4 +253,4 @@ if __name__ == "__main__":
         entity=os.getenv("WANDB_ENTITY"),
         project=os.getenv("WANDB_PROJECT"),
     )
-    wandb.agent(sweep_id, function=main, count=10)
+    wandb.agent(sweep_id, function=main, count=3)

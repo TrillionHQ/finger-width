@@ -17,6 +17,7 @@ from keras.callbacks import (
     TensorBoard,
 )
 
+
 @click.command()
 @click.argument("processed_path", default=config.PROCESSED_PATH, type=click.Path(exists=True))
 @click.argument("models_path", default=config.MODELS_PATH, type=click.Path())
@@ -59,7 +60,7 @@ def train(processed_path: str, models_path: str) -> None:
     csv_path = os.path.join(models_path, f"{config.DATA_NAME}_logger.csv")
 
     """Model"""
-    model = create_mobilevit(im_size=IM_SIZE, channels=3, num_classes=2)
+    model = create_mobilevit(im_size=IM_SIZE, channels=3, num_outputs=2)
 
     # Compile the model
     opt = Adam(learning_rate=DEFAULT_LR)
