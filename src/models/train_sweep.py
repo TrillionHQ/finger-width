@@ -37,7 +37,7 @@ sweep_configuration = {
     "parameters": {
         "im_size": {"value": config.default_config["im_size"]},
         "batch_size": {"value": config.default_config["batch_size"]},
-        "epochs": {"value": 100},
+        "epochs": {"values": [50, 100]},
         "lr": {"value": config.default_config["lr"]},
         "early_stop": {"value": config.default_config["early_stop"]},
         "reduce_lr": {"value": config.default_config["reduce_lr"]},
