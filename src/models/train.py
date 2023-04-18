@@ -6,10 +6,10 @@ import logging
 from keras import metrics
 from metrics import r2_score
 from src.data import config
-from model import mobilenetv3_small
+from model import mobilenetv3_small, mobilenetv3_large
 from src.data.data_generator import dataset
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import (
+from keras.optimizers import Adam
+from keras.callbacks import (
     ModelCheckpoint,
     CSVLogger,
     ReduceLROnPlateau,
@@ -35,6 +35,7 @@ def train(processed_path: str, models_path: str) -> None:
     BS = config.default_config["batch_size"]
     EPOCHS = config.default_config["epochs"]
     DEFAULT_LR = config.default_config["lr"]
+    print(DEFAULT_LR)
     EARLY_STOPPING_PATIENCE = config.default_config["early_stop"]
     REDUCE_LR_PATIENCE = config.default_config["reduce_lr"]
     ARCH = config.default_config["arch"]
@@ -59,8 +60,14 @@ def train(processed_path: str, models_path: str) -> None:
     csv_path = os.path.join(models_path, f"{config.DATA_NAME}_logger.csv")
 
     """Model"""
-    model = mobilenetv3_small(im_size=IM_SIZE, channels=3, units1=64, alpha=ALPHA)
-
+    if 'Small' in ARCH:
+        model = mobilenetv3_small(
+            IM_SIZE, 3, SIZE_LAYER_1, float(ALPHA), 50
+        )
+    else:
+        model = mobilenetv3_large(
+            IM_SIZE, 3, SIZE_LAYER_1, float(ALPHA)
+        )
     # Compile the model
     opt = Adam(learning_rate=DEFAULT_LR)
     model.compile(

@@ -38,11 +38,11 @@ print(DATA_NAME)
 default_config = dict(
     im_size=IMAGE_SIZE,
     batch_size=32,
-    epochs=200,
+    epochs=100,
     lr=1e-4,
     early_stop=10,
     reduce_lr=5,
-    arch="MobileNetV3_Small",
+    arch="MobileNetV3_Large",
     alpha=0.75,
     size_layer1=64,
     seed=42,

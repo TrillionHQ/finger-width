@@ -42,9 +42,10 @@ sweep_configuration = {
         "early_stop": {"value": config.default_config["early_stop"]},
         "reduce_lr": {"value": config.default_config["reduce_lr"]},
         "arch": {"value": config.default_config["arch"]},
-        "alpha": {"value": config.default_config["alpha"]},
-        "size_layer1": {"value": 16},
-        "freeze": {"values": [10, 20, 30, 40, 50]},
+        # "alpha": {"value": config.default_config["alpha"]},
+        "alpha": {"values": [0.75, 1.0]},
+        "size_layer1": {"values": [16, 32]},
+        "freeze": {"value": 50},
         "seed": {"value": config.default_config["seed"]},
     },
 }
@@ -263,4 +264,4 @@ if __name__ == "__main__":
         entity=os.getenv("WANDB_ENTITY"),
         project=os.getenv("WANDB_PROJECT"),
     )
-    wandb.agent(sweep_id, function=main, count=10)
+    wandb.agent(sweep_id, function=main, count=8)
