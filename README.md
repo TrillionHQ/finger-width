@@ -1,4 +1,4 @@
-Example
+Finger-width
 ==============================
 
 ## Branches
